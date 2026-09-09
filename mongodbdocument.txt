@@ -1,0 +1,13 @@
+mongodb+srv://mishraharshit410:<db_password>@healthcare.qdsqjcj.mongodb.net/?appName=Healthcare
+
+pass:- 8KXzCrnVs_c93DR
+
+
+
+
+nodemailer pass :- qhet kkao ujsz vgyp
+
+
+UptimeRobot
+GitHub 
+responsive 
