@@ -7,6 +7,7 @@ import morgan from 'morgan'
 import nodemailer from 'nodemailer'
 import { uploadSingle } from './middleware/upload.js'
 import { getMediaById, insertMedia, listMedia } from './storage/mediaStore.js'
+import { uploadMediaToCloudinary } from './storage/cloudinary.js'
 import { uploadsDir, uploadsImagesDir, uploadsVideosDir } from './config/paths.js'
 
 const app = express()
@@ -126,34 +127,37 @@ app.post('/api/media', (req, res, next) => {
           ? 'video'
           : 'unknown'
 
-      const rel = path
-        .relative(uploadsDir, req.file.path)
-        .replaceAll('\\', '/')
-
       const id = path.parse(req.file.filename).name
       const title = cleanString(req.body?.title, 90)
       const client = cleanString(req.body?.client, 70)
       const year = cleanString(req.body?.year, 10)
       const tags = parseTags(req.body?.tags)
       const description = cleanString(req.body?.description, 800)
-      const item = {
-        id,
-        kind,
-        mimetype: req.file.mimetype,
-        originalName: req.file.originalname,
-        size: req.file.size,
-        url: `/uploads/${rel}`,
-        title,
-        client,
-        year,
-        tags,
-        description,
-        createdAt: new Date().toISOString(),
+      try {
+        const cloudAsset = await uploadMediaToCloudinary(req.file)
+        const item = {
+          id,
+          kind,
+          mimetype: req.file.mimetype,
+          originalName: req.file.originalname,
+          size: req.file.size,
+          url: cloudAsset.secure_url,
+          cloudinaryPublicId: cloudAsset.public_id,
+          cloudinaryResourceType: cloudAsset.resource_type,
+          title,
+          client,
+          year,
+          tags,
+          description,
+          createdAt: new Date().toISOString(),
+        }
+
+        await insertMedia(item)
+        res.status(201).json(item)
+      } finally {
+        // Multer needs a local temporary file, but Cloudinary is the permanent store.
+        await fs.unlink(req.file.path).catch(() => {})
       }
-
-      await insertMedia(item)
-
-      res.status(201).json(item)
     } catch (e) {
       next(e)
     }
